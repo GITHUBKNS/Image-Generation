@@ -1,19 +1,27 @@
-
 import React from 'react';
 import { GeneratedImage } from '../types';
 
 interface ImageGridProps {
   images: GeneratedImage[];
   onImageSelect: (image: GeneratedImage) => void;
+  aspectRatio: string;
 }
 
-const ImageGrid: React.FC<ImageGridProps> = ({ images, onImageSelect }) => {
+const getAspectRatioClass = (ratio: string): string => {
+  if (ratio === '1:1') return 'aspect-square';
+  if (ratio === '16:9') return 'aspect-video';
+  return `aspect-[${ratio.replace(':', '/')}]`;
+};
+
+const ImageGrid: React.FC<ImageGridProps> = ({ images, onImageSelect, aspectRatio }) => {
+  const aspectRatioClass = getAspectRatioClass(aspectRatio);
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 pb-28">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 pb-36 sm:pb-28">
       {images.map((image) => (
         <div
           key={image.id}
-          className="aspect-[9/16] bg-gray-800 rounded-lg overflow-hidden cursor-pointer group relative transform transition-transform duration-300 hover:scale-105"
+          className={`${aspectRatioClass} bg-gray-800 rounded-lg overflow-hidden cursor-pointer group relative transform transition-transform duration-300 hover:scale-105`}
           onClick={() => onImageSelect(image)}
         >
           <img

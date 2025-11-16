@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { GeneratedImage } from './types';
 import { generateWallpapers, remixWallpaper } from './services/geminiService';
@@ -14,6 +13,8 @@ function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
+  const [aspectRatio, setAspectRatio] = useState<string>('9:16');
+  const [quality, setQuality] = useState<string>('High');
 
   const handleGenerate = useCallback(async (currentPrompt: string) => {
     if (!currentPrompt || isLoading) return;
@@ -22,14 +23,14 @@ function App() {
     setImages([]);
 
     try {
-      const newImages = await generateWallpapers(currentPrompt);
+      const newImages = await generateWallpapers(currentPrompt, aspectRatio, quality);
       setImages(newImages);
     } catch (e: any) {
       setError(e.message || 'An unknown error occurred.');
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading]);
+  }, [isLoading, aspectRatio, quality]);
 
   const handleRemix = useCallback(async (imageToRemix: GeneratedImage) => {
     if (isLoading) return;
@@ -59,6 +60,31 @@ function App() {
     document.body.removeChild(link);
   };
 
+  const handleShare = useCallback(async (image: GeneratedImage) => {
+    const fileName = `${image.prompt.slice(0, 20).replace(/\s+/g, '_')}_${image.id.slice(0,4)}.jpeg`;
+    
+    try {
+      const response = await fetch(`data:image/jpeg;base64,${image.base64}`);
+      const blob = await response.blob();
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: 'VibePaper Wallpaper',
+          text: `Check out this wallpaper I generated with VibePaper: "${image.prompt}"`,
+          files: [file],
+        });
+      } else {
+        setError('Image sharing is not supported on this device/browser.');
+      }
+    } catch (error: any) {
+        if (error.name !== 'AbortError') {
+             console.error('Error sharing image:', error);
+             setError('An error occurred while trying to share the image.');
+        }
+    }
+  }, []);
+
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col items-center p-4 pt-8 sm:p-6 md:p-8 relative overflow-x-hidden">
@@ -80,9 +106,9 @@ function App() {
 
         <div className="flex-grow w-full">
           {isLoading ? (
-            <Loader />
+            <Loader aspectRatio={aspectRatio} />
           ) : images.length > 0 ? (
-            <ImageGrid images={images} onImageSelect={setSelectedImage} />
+            <ImageGrid images={images} onImageSelect={setSelectedImage} aspectRatio={aspectRatio} />
           ) : (
              <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 pt-16">
                 <SparklesIcon className="w-16 h-16 mb-4 text-gray-600"/>
@@ -97,6 +123,10 @@ function App() {
           setPrompt={setPrompt}
           onGenerate={handleGenerate}
           isLoading={isLoading}
+          aspectRatio={aspectRatio}
+          setAspectRatio={setAspectRatio}
+          quality={quality}
+          setQuality={setQuality}
         />
       </main>
 
@@ -106,6 +136,7 @@ function App() {
           onClose={() => setSelectedImage(null)}
           onDownload={handleDownload}
           onRemix={handleRemix}
+          onShare={handleShare}
           isLoading={isLoading}
         />
       )}
